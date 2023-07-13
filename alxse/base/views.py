@@ -1,21 +1,43 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse, request
+from django.db.models import Q
+from django.contrib import messages
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
 from .models import Room, Topic, Message
 from .forms import RoomForm
 
-# Create your views here.
-# rooms = [
-#     {'id': 1, 'name': 'Lets Learn Python'},
-#     {'id': 2, 'name': 'Lets Learn Django'},
-#     {'id': 3, 'name': 'Lets Learn Javascript'},
-#     {'id': 4, 'name': 'Lets Learn React'},
-#     {'id': 5, 'name': 'Lets Learn Vue'},
-#     {'id': 6, 'name': 'Lets Learn Angular'},
-#     {'id': 7, 'name': 'Lets Learn Node'},
-# ]
+def loginPage(request):
+    if request.method == 'POST':
+        
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect('home')
+        else:
+            messages.error(request, 'Invaild Username or Password')
+            
+    context = {}
+    return render(request, 'base/login_register.html', context)
+        
+def logoutUser(request):
+    logout(request)
+    return redirect('home')
+    
+
 def home(request):
-    rooms = Room.objects.all()
-    context = {'rooms': rooms }
+    q = request.GET.get('q') if request.GET.get('q') != None else ''
+    
+    rooms = Room.objects.filter(
+        Q(topic__name__icontains=q) |
+        Q(name__icontains=q) |
+        Q(description__icontains=q)
+          )
+    topics = Topic.objects.all()
+    count_room = rooms.count()
+    context = {'rooms': rooms, 'topics': topics, 'count_room': count_room}
     return render(request, "base/home.html", context)
 
 def room(request, pk):
